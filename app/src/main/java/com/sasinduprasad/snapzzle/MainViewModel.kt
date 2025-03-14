@@ -10,36 +10,30 @@ import kotlin.random.Random
 
 class MainViewModel : ViewModel() {
 
-    private val _originalbitmaps = MutableStateFlow<Bitmap?>(null)
-    val originalbitmaps = _originalbitmaps.asStateFlow()
+    private val _originalbitmap = MutableStateFlow<Bitmap?>(null)
+    val originalbitmap = _originalbitmap.asStateFlow()
 
     private val _bitmaps = MutableStateFlow<List<Bitmap>>(emptyList())
     val bitmaps = _bitmaps.asStateFlow()
 
     @SuppressLint("NewApi")
     fun onTakePhoto(bitmap: Bitmap) {
-        Log.i("bitmap_width", bitmap.width.toString())
-        Log.i("bitmap_height", bitmap.height.toString())
-        Log.i("bitmap_byte_count", bitmap.byteCount.toString())
-        Log.i("bitmap_allocationByteCount", bitmap.allocationByteCount.toString())
-        Log.i("bitmap_colorSpace", bitmap.colorSpace.toString())
-        Log.i("bitmap_config", bitmap.config.toString())
-        Log.i("bitmap_generationId", bitmap.generationId.toString())
-        Log.i("bitmap_density", bitmap.density.toString())
-        Log.i("bitmap_rowBytes", bitmap.rowBytes.toString())
+        _originalbitmap.value = bitmap
+    }
 
-        _originalbitmaps.value = bitmap
+    fun generatePuzzle(originalBitmap: Bitmap) {
 
-        val width = bitmap.width / 3  // Each cell's width (3 columns)
-        val height = bitmap.height / 5 // Each cell's height (5 rows)
+        val width = originalBitmap.width / 3
+        val height = originalBitmap.height / 5
 
 
         val bitmapList = mutableListOf<Bitmap>()
 
-        for (y in 0 until 5) {  // Loop for rows (0,1,2,3,4)
-            for (x in 0 until 3) {  // Loop for columns (0,1,2)
-                val resizedBmp = Bitmap.createBitmap(bitmap, width * x, height * y, width, height)
-                bitmapList.add(resizedBmp)  // Add to list
+        for (y in 0 until 5) {
+            for (x in 0 until 3) {
+                val resizedBmp =
+                    Bitmap.createBitmap(originalBitmap, width * x, height * y, width, height)
+                bitmapList.add(resizedBmp)
             }
         }
 
@@ -53,9 +47,17 @@ class MainViewModel : ViewModel() {
         _bitmaps.value = bitmapList.shuffled()
     }
 
+    fun shuffle(){
+        _bitmaps.value = _bitmaps.value.shuffled()
+    }
+
+    fun savePuzzle(){
+
+    }
 
     fun cleanUp() {
         _bitmaps.value = emptyList()
+        _originalbitmap.value = null
     }
 
 
