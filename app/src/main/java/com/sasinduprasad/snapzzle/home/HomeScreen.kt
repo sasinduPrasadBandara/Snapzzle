@@ -2,6 +2,7 @@ package com.sasinduprasad.snapzzle.home
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.util.Log
 import androidx.camera.core.CameraSelector
@@ -26,7 +27,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -50,7 +54,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
@@ -63,25 +69,38 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sasinduprasad.snapzzle.CameraPreview
 import com.sasinduprasad.snapzzle.ImageView
 import com.sasinduprasad.snapzzle.MainViewModel
+import com.sasinduprasad.snapzzle.MainViewModelFactory
 import com.sasinduprasad.snapzzle.R
 
 @Composable
-fun HomeScreen(onNavigateToCreate:()->Unit) {
+fun HomeScreen(
+    onNavigateToCreate: () -> Unit,
+    onNavigateToPlay:(puzzleId:Long)->Unit
+) {
 
     val isDarkMode = isSystemInDarkTheme()
     val scrollState = rememberScrollState()
 
-    Scaffold (
+    val context = LocalContext.current
+
+    val viewModel: MainViewModel = viewModel(
+        factory = MainViewModelFactory(context.applicationContext)
+    )
+
+    val puzzleList by viewModel.puzzleList.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {onNavigateToCreate()},
+                onClick = { onNavigateToCreate() },
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.tertiary
             ) {
                 Icon(Icons.Filled.Add, "floating action button.")
             }
         }
-    )  { padding ->
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -111,63 +130,57 @@ fun HomeScreen(onNavigateToCreate:()->Unit) {
                 )
 
                 LazyRow {
-                    repeat(5) {
-                        item {
-                            ElevatedCard(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary,
-                                ),
-                                elevation = CardDefaults.cardElevation(
-                                    defaultElevation = 6.dp
-                                ),
-                                modifier = Modifier
-                                    .size(width = 200.dp, height = 280.dp)
+                    items(puzzleList.size) { index ->
+                        val puzzle = puzzleList[index]
+
+                        ElevatedCard( onClick = { puzzle.pid?.let { onNavigateToPlay(it) } },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondary,
+                            ),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = 6.dp
+                            ),
+                            modifier = Modifier
+                                .size(width = 200.dp, height = 280.dp)
+                        ) {
+                            val bitmaps = puzzle.bitmaps.map { byteArrayToBitmap(it) }
+
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(3),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
                             ) {
-                                //puzzle preview
+                                items(bitmaps.size) { bitmapIndex ->
+                                    Box(
+                                        Modifier
+                                            .width(200.dp/3)
+                                            .height(280.dp/5)
+                                    ) {
+                                        Image(
+                                            bitmap = bitmaps[bitmapIndex].asImageBitmap(),
+                                            contentDescription = null,
+                                        )
+                                    }
+                                }
                             }
-                            Spacer(modifier = Modifier.width(16.dp))
                         }
+                        Spacer(modifier = Modifier.width(16.dp))
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Challenges",
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    fontSize = 16.sp
-                )
-
-                LazyRow {
-                    repeat(5) {
-                        item {
-                            ElevatedCard(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary,
-                                ),
-                                elevation = CardDefaults.cardElevation(
-                                    defaultElevation = 6.dp
-                                ),
-                                modifier = Modifier
-                                    .size(width = 200.dp, height = 280.dp)
-                            ) {
-                                //puzzle preview
-                            }
-                            Spacer(modifier = Modifier.width(16.dp))
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
 
 
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+
     }
+
+}
+
+
+fun byteArrayToBitmap(byteArray: ByteArray): Bitmap {
+    return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
 }
 
