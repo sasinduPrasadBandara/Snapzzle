@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -77,118 +78,149 @@ import kotlin.math.roundToInt
 fun ImageView(bitmaps: List<Bitmap>) {
     val viewModel: MainViewModel = viewModel()
 
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        IconButton(onClick = { viewModel.cleanUp() }) {
-            Icon(
-                imageVector = Icons.Default.ArrowBackIosNew,
-                contentDescription = "Switch camera"
-            )
-        }
-
-        val squareSize = 100.dp
-        val gridSize = 3
-        val itemCount = 15
-
-        // List with one empty slot (-1 represents empty)
-        val items = remember { mutableStateListOf<Int>().apply {
-            addAll((0 until itemCount - 1).toList())
-            add(-1)
-        }}
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(gridSize),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.fillMaxSize()
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(padding),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(items.size) { index ->
-                val offsetX = remember { androidx.compose.animation.core.Animatable(0f) }
-                val offsetY = remember { androidx.compose.animation.core.Animatable(0f) }
-                val coroutineScope = rememberCoroutineScope()
-                val sizePx = with(LocalDensity.current) { squareSize.toPx() }
-                val maxSwipeDistance = sizePx *1.1
+            IconButton(onClick = { viewModel.cleanUp() }) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBackIosNew,
+                    contentDescription = "Switch camera"
+                )
+            }
 
-                Box(
-                    Modifier
-                        .offset { IntOffset(offsetX.value.roundToInt(), offsetY.value.roundToInt()) }
-                        .width(squareSize)
-                        .height(squareSize)
-                        .pointerInput(Unit) {
-                            detectDragGestures(
-                                onDragEnd = {
-                                    val emptyIndex = items.indexOf(-1)
+            val squareSize = 100.dp
+            val gridSize = 3
+            val itemCount = 15
 
-                                    // Prevent crashes: Ensure valid index swapping
-                                    if (index in items.indices && emptyIndex in items.indices) {
-                                        coroutineScope.launch {
-                                            when {
-                                                // Swipe Right
-                                                offsetX.value > sizePx / 6 && offsetX.value < maxSwipeDistance &&
-                                                        index + 1 == emptyIndex && (index + 1) % gridSize != 0 -> {
-                                                    swap(items, index, emptyIndex)
-                                                    offsetX.animateTo(sizePx, tween(100, easing = FastOutSlowInEasing))
+            // List with one empty slot (-1 represents empty)
+            val items = remember {
+                mutableStateListOf<Int>().apply {
+                    addAll((0 until itemCount - 1).toList())
+                    add(-1)
+                }
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(gridSize),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(items.size) { index ->
+                    val offsetX = remember { androidx.compose.animation.core.Animatable(0f) }
+                    val offsetY = remember { androidx.compose.animation.core.Animatable(0f) }
+                    val coroutineScope = rememberCoroutineScope()
+                    val sizePx = with(LocalDensity.current) { squareSize.toPx() }
+                    val maxSwipeDistance = sizePx * 1.1
+
+                    Box(
+                        Modifier
+                            .offset {
+                                IntOffset(
+                                    offsetX.value.roundToInt(),
+                                    offsetY.value.roundToInt()
+                                )
+                            }
+                            .width(squareSize)
+                            .height(squareSize)
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragEnd = {
+                                        val emptyIndex = items.indexOf(-1)
+
+                                        // Prevent crashes: Ensure valid index swapping
+                                        if (index in items.indices && emptyIndex in items.indices) {
+                                            coroutineScope.launch {
+                                                when {
+                                                    // Swipe Right
+                                                    offsetX.value > sizePx / 6 && offsetX.value < maxSwipeDistance &&
+                                                            index + 1 == emptyIndex && (index + 1) % gridSize != 0 -> {
+                                                        swap(items, index, emptyIndex)
+                                                        offsetX.animateTo(
+                                                            sizePx,
+                                                            tween(100, easing = FastOutSlowInEasing)
+                                                        )
+                                                    }
+                                                    // Swipe Left
+                                                    offsetX.value < -sizePx / 6 && offsetX.value > -maxSwipeDistance &&
+                                                            index - 1 == emptyIndex && index % gridSize != 0 -> {
+                                                        swap(items, index, emptyIndex)
+                                                        offsetX.animateTo(
+                                                            -sizePx,
+                                                            tween(100, easing = FastOutSlowInEasing)
+                                                        )
+                                                    }
+                                                    // Swipe Down
+                                                    offsetY.value > sizePx / 6 && offsetY.value < maxSwipeDistance &&
+                                                            index + gridSize == emptyIndex -> {
+                                                        swap(items, index, emptyIndex)
+                                                        offsetY.animateTo(
+                                                            sizePx,
+                                                            tween(100, easing = FastOutSlowInEasing)
+                                                        )
+                                                    }
+                                                    // Swipe Up
+                                                    offsetY.value < -sizePx / 6 && offsetY.value > -maxSwipeDistance &&
+                                                            index - gridSize == emptyIndex -> {
+                                                        swap(items, index, emptyIndex)
+                                                        offsetY.animateTo(
+                                                            -sizePx,
+                                                            tween(100, easing = FastOutSlowInEasing)
+                                                        )
+                                                    }
                                                 }
-                                                // Swipe Left
-                                                offsetX.value < -sizePx / 6 && offsetX.value > -maxSwipeDistance &&
-                                                        index - 1 == emptyIndex && index % gridSize != 0 -> {
-                                                    swap(items, index, emptyIndex)
-                                                    offsetX.animateTo(-sizePx, tween(100, easing = FastOutSlowInEasing))
-                                                }
-                                                // Swipe Down
-                                                offsetY.value > sizePx / 6 && offsetY.value < maxSwipeDistance &&
-                                                        index + gridSize == emptyIndex -> {
-                                                    swap(items, index, emptyIndex)
-                                                    offsetY.animateTo(sizePx, tween(100, easing = FastOutSlowInEasing))
-                                                }
-                                                // Swipe Up
-                                                offsetY.value < -sizePx / 6 && offsetY.value > -maxSwipeDistance &&
-                                                        index - gridSize == emptyIndex -> {
-                                                    swap(items, index, emptyIndex)
-                                                    offsetY.animateTo(-sizePx, tween(100, easing = FastOutSlowInEasing))
-                                                }
+                                                // Reset animation
+                                                offsetX.animateTo(0f, tween(100))
+                                                offsetY.animateTo(0f, tween(100))
                                             }
-                                            // Reset animation
-                                            offsetX.animateTo(0f, tween(100))
-                                            offsetY.animateTo(0f, tween(100))
-                                        }
-                                    } else {
-                                        // If out-of-bounds, reset position smoothly
-                                        coroutineScope.launch {
-                                            offsetX.animateTo(0f, tween(100))
-                                            offsetY.animateTo(0f, tween(100))
+                                        } else {
+                                            // If out-of-bounds, reset position smoothly
+                                            coroutineScope.launch {
+                                                offsetX.animateTo(0f, tween(100))
+                                                offsetY.animateTo(0f, tween(100))
+                                            }
                                         }
                                     }
-                                }
-                            ) { _, dragAmount ->
-                                val emptyIndex = items.indexOf(-1)
-                                val isHorizontal = abs(dragAmount.x) > abs(dragAmount.y)
+                                ) { _, dragAmount ->
+                                    val emptyIndex = items.indexOf(-1)
+                                    val isHorizontal = abs(dragAmount.x) > abs(dragAmount.y)
 
-                                coroutineScope.launch {
-                                    if (isHorizontal) {
-                                        // Only move left/right if empty box is in the correct spot
-                                        if (index + 1 == emptyIndex || index - 1 == emptyIndex) {
-                                            offsetX.snapTo((offsetX.value + dragAmount.x).coerceIn(
-                                                (-maxSwipeDistance).toFloat(),
-                                                maxSwipeDistance.toFloat()
-                                            ))
-                                        }
-                                    } else {
-                                        // Only move up/down if empty box is in the correct spot
-                                        if (index + gridSize == emptyIndex || index - gridSize == emptyIndex) {
-                                            offsetY.snapTo((offsetY.value + dragAmount.y).coerceIn((-maxSwipeDistance).toFloat(),
-                                                maxSwipeDistance.toFloat()
-                                            ))
+                                    coroutineScope.launch {
+                                        if (isHorizontal) {
+                                            // Only move left/right if empty box is in the correct spot
+                                            if (index + 1 == emptyIndex || index - 1 == emptyIndex) {
+                                                offsetX.snapTo(
+                                                    (offsetX.value + dragAmount.x).coerceIn(
+                                                        (-maxSwipeDistance).toFloat(),
+                                                        maxSwipeDistance.toFloat()
+                                                    )
+                                                )
+                                            }
+                                        } else {
+                                            // Only move up/down if empty box is in the correct spot
+                                            if (index + gridSize == emptyIndex || index - gridSize == emptyIndex) {
+                                                offsetY.snapTo(
+                                                    (offsetY.value + dragAmount.y).coerceIn(
+                                                        (-maxSwipeDistance).toFloat(),
+                                                        maxSwipeDistance.toFloat()
+                                                    )
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
+                    ) {
+                        if (items[index] != -1 && items[index] < bitmaps.size) {
+                            Image(
+                                bitmap = bitmaps[items[index]].asImageBitmap(),
+                                contentDescription = null,
+                            )
                         }
-                ) {
-                    if (items[index] != -1 && items[index] < bitmaps.size) {
-                        Image(
-                            bitmap = bitmaps[items[index]].asImageBitmap(),
-                            contentDescription = null,
-                        )
                     }
                 }
             }
@@ -203,58 +235,3 @@ fun swap(list: MutableList<Int>, first: Int, second: Int) {
     }
 }
 
-
-
-
-
-
-
-
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalWearMaterialApi::class)
-@Composable
-private fun SwipeableSample() {
-    val width = 200.dp
-    val squareSize = 100.dp
-
-    LazyVerticalStaggeredGrid(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalItemSpacing = 4.dp,
-        modifier = Modifier.fillMaxSize(),
-
-        columns = StaggeredGridCells.Fixed(3),
-    ) {
-        items(15) {
-            repeat(15) {
-                val swipeableState = rememberSwipeableState(0)
-                val sizePx = with(LocalDensity.current) { squareSize.toPx() }
-                val anchors = mapOf(0f to 0, sizePx to 1) // Maps anchor points (in px) to states
-                Box(
-                    Modifier
-                        .offset { IntOffset(swipeableState.offset.value.roundToInt(), 0) }
-                        .width(squareSize)
-                        .height(squareSize)
-                        .background(Color.DarkGray)
-                        .swipeable(
-                            state = swipeableState,
-                            anchors = anchors,
-                            thresholds = { _, _ -> FractionalThreshold(0.3f) },
-                            orientation = Orientation.Horizontal
-                        )
-                        .background(Color.LightGray),
-                ) {
-                    Box(modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                swipeableState.offset.value.roundToInt(),
-                                0
-                            )
-                        }
-                        .background(Color.DarkGray)
-                        .fillMaxSize()
-                    )
-                }
-            }
-        }
-    }
-}
