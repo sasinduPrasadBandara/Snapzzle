@@ -24,9 +24,13 @@ fun NavGraph(
         startDestination = HomeScreen
     ) {
         composable<HomeScreen> {
-            HomeScreen(onNavigateToCreate = {
-                navController.navigate(CreateScreen)
-            })
+            HomeScreen(
+                onNavigateToCreate = {
+                    navController.navigate(CreateScreen)
+                },
+                onNavigateToPlay = {
+                    navController.navigate(PlayPuzzleScreen(puzzleId = it))
+                })
         }
 
         composable<CreateScreen> {
@@ -39,10 +43,12 @@ fun NavGraph(
 
             PlayPuzzleScreen(
                 onGameWin = {
-                    navController.navigate(WinScreen(
-                        puzzleId = "",
-                        duration = 0
-                    ))
+                    navController.navigate(
+                        WinScreen(
+                            puzzleId = "",
+                            duration = 0
+                        )
+                    )
                 },
                 onGameGiveUp = {
                     navController.popBackStack()
@@ -69,12 +75,12 @@ object CreateScreen
 
 @Serializable
 data class PlayPuzzleScreen(
-    val puzzleId: String,
+    val puzzleId: Long,
 )
 
 @Serializable
 data class WinScreen(
     val puzzleId: String,
-    val duration:Long,
+    val duration: Long,
 )
 
