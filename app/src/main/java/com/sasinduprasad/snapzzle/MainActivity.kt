@@ -53,10 +53,10 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sasinduprasad.snapzzle.ui.theme.SnapzzleTheme
-import kotlinx.coroutines.launch
+
 
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -71,125 +71,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             SnapzzleTheme {
-                val controller = remember {
-                    LifecycleCameraController(applicationContext).apply {
-                        setEnabledUseCases(
-                            CameraController.IMAGE_CAPTURE
-                        )
-                    }
-                }
-                val viewModel = viewModel<MainViewModel>()
-                val bitmaps by viewModel.bitmaps.collectAsState()
-                val scope = rememberCoroutineScope()
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.DarkGray)
-                        .padding(16.dp)
-                ) {
-
-                    if(bitmaps.size >0){
-                        ImageView(bitmaps)
-                    }else{
-                        CameraPreview(
-                            controller = controller,
-                            modifier = Modifier.fillMaxSize()
-                        )
-
-                        IconButton(
-                            onClick = {
-                                controller.cameraSelector =
-                                    if (controller.cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
-                                        CameraSelector.DEFAULT_FRONT_CAMERA
-                                    } else CameraSelector.DEFAULT_BACK_CAMERA
-                            },
-                            modifier = Modifier
-                                .offset(16.dp, 24.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cameraswitch,
-                                contentDescription = "Switch camera"
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.BottomCenter)
-                                .padding(vertical = 48.dp),
-                            horizontalArrangement = Arrangement.SpaceAround
-                        ) {
-                            IconButton(
-                                onClick = {
-
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Photo,
-                                    contentDescription = "Open gallery"
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    takePhoto(
-                                        controller = controller,
-                                        onPhotoTaken = viewModel::onTakePhoto
-                                    )
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PhotoCamera,
-                                    contentDescription = "Take photo"
-                                )
-                            }
-                        }
-                    }
-
-                }
-
+                NavGraph()
             }
         }
     }
 
-    override fun getOnBackInvokedDispatcher(): OnBackInvokedDispatcher {
-        println("back")
-        return super.getOnBackInvokedDispatcher()
-    }
-
-    private fun takePhoto(
-        controller: LifecycleCameraController,
-        onPhotoTaken: (Bitmap) -> Unit,
-    ) {
-        controller.takePicture(
-            ContextCompat.getMainExecutor(applicationContext),
-            object : OnImageCapturedCallback() {
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    super.onCaptureSuccess(image)
-
-                    val matrix = Matrix().apply {
-                        postRotate(image.imageInfo.rotationDegrees.toFloat())
-                    }
-                    val rotatedBitmap = Bitmap.createBitmap(
-                        image.toBitmap(),
-                        0,
-                        0,
-                        image.width,
-                        image.height,
-                        matrix,
-                        true
-                    )
-
-                    onPhotoTaken(rotatedBitmap)
-                }
-
-                override fun onError(exception: ImageCaptureException) {
-                    super.onError(exception)
-                    Log.e("Camera", "Couldn't take photo: ", exception)
-                }
-            }
-        )
-    }
 
     private fun hasPermission(): Boolean {
         return CAMERAX_PERMISSION.all {
