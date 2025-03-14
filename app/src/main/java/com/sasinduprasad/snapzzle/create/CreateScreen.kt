@@ -61,14 +61,19 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sasinduprasad.snapzzle.CameraPreview
 import com.sasinduprasad.snapzzle.ImageView
 import com.sasinduprasad.snapzzle.MainViewModel
+import com.sasinduprasad.snapzzle.MainViewModelFactory
 import com.sasinduprasad.snapzzle.R
 import com.sasinduprasad.snapzzle.component.Header
+import com.sasinduprasad.snapzzle.data.puzzle.Puzzle
 import com.sasinduprasad.snapzzle.swap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -86,7 +91,10 @@ fun CreateScreen(
         }
     }
 
-    val viewModel = viewModel<MainViewModel>()
+    val viewModel: MainViewModel = viewModel(
+        factory = MainViewModelFactory(context.applicationContext)
+    )
+
     val bitmaps by viewModel.bitmaps.collectAsState()
     val originalBitmap by viewModel.originalbitmap.collectAsState()
     val scope = rememberCoroutineScope()
@@ -117,7 +125,7 @@ fun CreateScreen(
                         text = "Click save puzzle button to save puzzle in my puzzles",
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.tertiary,
-                        fontSize = 16.sp    
+                        fontSize = 16.sp
                     )
                 } else {
 
@@ -212,7 +220,34 @@ fun CreateScreen(
                             ),
                             onClick = {
                                 if (bitmaps.isNotEmpty()) {
-                                    viewModel.savePuzzle()
+                                    scope.launch (Dispatchers.IO){
+                                        viewModel.savePuzzle(
+                                            Puzzle(
+                                                createdAt = System.currentTimeMillis(),
+                                                userId = 0L,
+                                                reward = 100,
+                                                isPublished = false,
+                                                bitmaps = bitmaps.map { bitmap ->
+                                                    val outputStream = ByteArrayOutputStream()
+                                                    bitmap.compress(
+                                                        Bitmap.CompressFormat.PNG,
+                                                        100,
+                                                        outputStream
+                                                    )
+                                                    outputStream.toByteArray()
+                                                },
+                                                originalBitmap = ByteArrayOutputStream().apply {
+                                                    originalBitmap!!.compress(
+                                                        Bitmap.CompressFormat.PNG,
+                                                        100,
+                                                        this
+                                                    )
+                                                }.toByteArray()
+                                            )
+                                        )
+                                    }
+                                    onBackPressed()
+
                                 } else {
                                     viewModel.generatePuzzle(originalBitmap!!)
                                 }
