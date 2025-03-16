@@ -6,7 +6,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.sasinduprasad.snapzzle.create.CreateScreen
 import com.sasinduprasad.snapzzle.home.HomeScreen
 import com.sasinduprasad.snapzzle.playpuzzle.PlayPuzzleScreen
@@ -42,13 +41,14 @@ fun NavGraph(
         composable<PlayPuzzleScreen> {
 
             PlayPuzzleScreen(
-                onGameWin = {
+                onGameWin = {id , duration->
                     navController.navigate(
                         WinScreen(
-                            puzzleId = "",
-                            duration = 0
+                            puzzleId = id,
+                            duration = duration
                         )
                     )
+
                 },
                 onGameGiveUp = {
                     navController.popBackStack()
@@ -58,7 +58,19 @@ fun NavGraph(
         }
 
         composable<WinScreen> {
-            WinScreen(navController)
+            WinScreen(
+                navController,
+                onNavigateToHome = {
+                    navController.navigate(HomeScreen)
+                },
+                onReplay = {
+                    WinScreen(
+                        puzzleId = it,
+                        duration = 0
+                    )
+                },
+                onSaveToGallery ={}
+            )
         }
 
 
@@ -80,7 +92,7 @@ data class PlayPuzzleScreen(
 
 @Serializable
 data class WinScreen(
-    val puzzleId: String,
-    val duration: Long,
+    val puzzleId: Long,
+    val duration: Int,
 )
 
