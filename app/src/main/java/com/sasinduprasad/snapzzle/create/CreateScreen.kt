@@ -4,18 +4,15 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.util.Log
+import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture.OnImageCapturedCallback
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.view.CameraController
 import androidx.camera.view.LifecycleCameraController
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,55 +24,48 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
-import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sasinduprasad.snapzzle.CameraPreview
-import com.sasinduprasad.snapzzle.ImageView
+import com.sasinduprasad.snapzzle.data.Difficulty
 import com.sasinduprasad.snapzzle.MainViewModel
 import com.sasinduprasad.snapzzle.MainViewModelFactory
 import com.sasinduprasad.snapzzle.R
 import com.sasinduprasad.snapzzle.component.Header
 import com.sasinduprasad.snapzzle.data.puzzle.Puzzle
-import com.sasinduprasad.snapzzle.swap
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.ByteArrayOutputStream
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 @Composable
 fun CreateScreen(
@@ -98,6 +88,60 @@ fun CreateScreen(
     val bitmaps by viewModel.bitmaps.collectAsState()
     val originalBitmap by viewModel.originalbitmap.collectAsState()
     val scope = rememberCoroutineScope()
+    var selectedDifficulty by remember { mutableStateOf(Difficulty.MEDIUM) }
+    val showDifficultySelectDialog = remember { mutableStateOf(false) }
+
+    if (showDifficultySelectDialog.value) {
+        Dialog(onDismissRequest = {}) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.primary)
+                    .padding(24.dp)
+            ) {
+
+                Text(
+                    text = "Select Your puzzle difficulty",
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    fontSize = 18.sp
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(id = R.drawable.play_illustration),
+                        contentDescription = "Home",
+                        modifier = Modifier.size(100.dp)
+                    )
+
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        items(Difficulty.entries) { difficulty ->
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(
+                                    colors = RadioButtonDefaults.colors(
+                                        selectedColor = MaterialTheme.colorScheme.surface,
+                                    ),
+                                    onClick = {
+                                        selectedDifficulty = difficulty
+                                        showDifficultySelectDialog.value = false
+                                    },
+                                    selected = difficulty == selectedDifficulty
+                                )
+                                Text(
+                                    text = difficulty.name,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontSize = 16.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+    }
 
     Scaffold { padding ->
         Column(
@@ -118,7 +162,6 @@ fun CreateScreen(
 
 
             if (originalBitmap != null) {
-//                ImageView(bitmaps)
 
                 if (bitmaps.isNotEmpty()) {
                     Text(
@@ -145,9 +188,11 @@ fun CreateScreen(
                     Box {
                         if (bitmaps.isNotEmpty()) {
 
-                            val squareSize = 100.dp
-                            val gridSize = 3
-                            val itemCount = 15
+                            val gridSize = when (selectedDifficulty) {
+                                Difficulty.EASY -> 2
+                                Difficulty.MEDIUM -> 3
+                                Difficulty.HARD -> 4
+                            }
 
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(gridSize),
@@ -156,9 +201,7 @@ fun CreateScreen(
                             ) {
                                 items(bitmaps.size) { index ->
                                     Box(
-                                        Modifier
-                                            .width(squareSize)
-                                            .height(squareSize)
+
                                     ) {
                                         Image(
                                             bitmap = bitmaps[index].asImageBitmap(),
@@ -182,30 +225,44 @@ fun CreateScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(48.dp),
+                        horizontalArrangement = Arrangement.spacedBy(32.dp),
                     )
 
                     {
-                        IconButton(
-                            onClick = {
-                                viewModel.cleanUp()
-                            }) {
-                            Image(
-                                painter = painterResource(id = R.drawable.backtocam_icon),
-                                contentDescription = "Back to camera",
-                                modifier = Modifier.size(30.dp)
-                            )
-                        }
 
                         if (bitmaps.isNotEmpty()) {
                             IconButton(
                                 onClick = {
-                                    viewModel.shuffle()
+                                    viewModel.cleanUp()
                                 }) {
                                 Image(
-                                    painter = painterResource(id = R.drawable.shuffle_icon),
-                                    contentDescription = "Back to camera",
+                                    painter = painterResource(id = R.drawable.backtocam_icon),
+                                    contentDescription = "Home",
                                     modifier = Modifier.size(30.dp)
+                                )
+                            }
+                        } else {
+                            Button(
+                                colors = ButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    contentColor = MaterialTheme.colorScheme.surface,
+                                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                                    disabledContentColor = MaterialTheme.colorScheme.surface,
+                                ),
+                                onClick = {
+                                    showDifficultySelectDialog.value = true
+                                },
+                            ) {
+                                Text(
+                                    text = when (selectedDifficulty.name) {
+                                        Difficulty.EASY.name -> "Easy"
+                                        Difficulty.MEDIUM.name -> "Medium"
+                                        Difficulty.HARD.name -> "Hard"
+                                        else -> ""
+                                    },
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontSize = 18.sp
                                 )
                             }
                         }
@@ -220,36 +277,36 @@ fun CreateScreen(
                             ),
                             onClick = {
                                 if (bitmaps.isNotEmpty()) {
-                                    scope.launch (Dispatchers.IO){
-                                        viewModel.savePuzzle(
-                                            Puzzle(
+                                    scope.launch {
+                                        try {
+                                            val puzzle = Puzzle(
                                                 createdAt = System.currentTimeMillis(),
                                                 userId = 0L,
                                                 reward = 100,
-                                                isPublished = false,
-                                                bitmaps = bitmaps.map { bitmap ->
-                                                    val outputStream = ByteArrayOutputStream()
-                                                    bitmap.compress(
-                                                        Bitmap.CompressFormat.PNG,
-                                                        100,
-                                                        outputStream
-                                                    )
-                                                    outputStream.toByteArray()
-                                                },
-                                                originalBitmap = ByteArrayOutputStream().apply {
-                                                    originalBitmap!!.compress(
-                                                        Bitmap.CompressFormat.PNG,
-                                                        100,
-                                                        this
-                                                    )
-                                                }.toByteArray()
+                                                difficulty = selectedDifficulty,
+                                                isWin = false,
+                                                originalBitmap = ByteArray(0),
+                                                duration = 0
                                             )
-                                        )
-                                    }
-                                    onBackPressed()
 
+                                            viewModel.savePuzzle(puzzle, originalBitmap!!, bitmaps)
+                                            onBackPressed()
+
+                                            Toast.makeText(
+                                                context,
+                                                "Puzzle is being saving",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(
+                                                context,
+                                                "Error saving puzzle: ${e.message}",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                    }
                                 } else {
-                                    viewModel.generatePuzzle(originalBitmap!!)
+                                    viewModel.generatePuzzle(originalBitmap!!,selectedDifficulty)
                                 }
                             },
                         ) {
