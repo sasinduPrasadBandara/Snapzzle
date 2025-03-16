@@ -1,28 +1,15 @@
 package com.sasinduprasad.snapzzle.home
 
-import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.util.Log
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ImageCapture.OnImageCapturedCallback
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
-import androidx.camera.view.CameraController
-import androidx.camera.view.LifecycleCameraController
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,52 +17,42 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Cameraswitch
-import androidx.compose.material.icons.filled.Photo
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sasinduprasad.snapzzle.CameraPreview
-import com.sasinduprasad.snapzzle.ImageView
+import com.sasinduprasad.snapzzle.data.Difficulty
 import com.sasinduprasad.snapzzle.MainViewModel
 import com.sasinduprasad.snapzzle.MainViewModelFactory
 import com.sasinduprasad.snapzzle.R
+import com.sasinduprasad.snapzzle.playpuzzle.formatTime
+import kotlinx.coroutines.Dispatchers
 
 @Composable
 fun HomeScreen(
     onNavigateToCreate: () -> Unit,
-    onNavigateToPlay:(puzzleId:Long)->Unit
+    onNavigateToPlay: (puzzleId: Long) -> Unit,
 ) {
 
     val isDarkMode = isSystemInDarkTheme()
@@ -88,7 +65,10 @@ fun HomeScreen(
     )
 
     val puzzleList by viewModel.puzzleList.collectAsState()
-    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Dispatchers.IO) {
+        viewModel.loadPuzzlesFromDb()
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -133,7 +113,8 @@ fun HomeScreen(
                     items(puzzleList.size) { index ->
                         val puzzle = puzzleList[index]
 
-                        ElevatedCard( onClick = { puzzle.pid?.let { onNavigateToPlay(it) } },
+                        ElevatedCard(
+                            onClick = { puzzle.pid?.let { onNavigateToPlay(it) } },
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.secondary,
                             ),
@@ -143,32 +124,77 @@ fun HomeScreen(
                             modifier = Modifier
                                 .size(width = 200.dp, height = 280.dp)
                         ) {
-                            val bitmaps = puzzle.bitmaps.map { byteArrayToBitmap(it) }
 
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(3),
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                items(bitmaps.size) { bitmapIndex ->
-                                    Box(
-                                        Modifier
-                                            .width(200.dp/3)
-                                            .height(280.dp/5)
-                                    ) {
-                                        Image(
-                                            bitmap = bitmaps[bitmapIndex].asImageBitmap(),
-                                            contentDescription = null,
-                                        )
+                            val bitmaps = puzzle.bitmaps.mapNotNull { bitmapData ->
+                                BitmapFactory.decodeByteArray(
+                                    bitmapData.bitmap,
+                                    0,
+                                    bitmapData.bitmap.size
+                                )
+                            }.shuffled()
+
+
+
+                            val columnCount = when (puzzle.difficulty) {
+                                Difficulty.EASY -> 2
+                                Difficulty.MEDIUM -> 3
+                                Difficulty.HARD -> 4
+                            }
+
+                            val rowCount = when (puzzle.difficulty) {
+                                Difficulty.EASY -> 4
+                                Difficulty.MEDIUM -> 5
+                                Difficulty.HARD -> 6
+                            }
+
+                            val gridSize = when (puzzle.difficulty) {
+                                Difficulty.EASY -> 2
+                                Difficulty.MEDIUM -> 3
+                                Difficulty.HARD -> 4
+                            }
+
+                            if (puzzle.isWin) {
+                                Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Image(
+                                        bitmap = puzzle.originalBitmap.asImageBitmap(),
+                                        contentDescription = null,
+                                    )
+                                    Text(
+                                        text = formatTime(puzzle.duration),
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                        fontSize = 16.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(32.dp))
+                                }
+                            } else {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(gridSize),
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    items(bitmaps.size) { bitmapIndex ->
+                                        Box(
+                                            Modifier
+                                                .width(200.dp / columnCount)
+                                                .height(280.dp / rowCount)
+                                        ) {
+                                            Image(
+                                                bitmap = bitmaps[bitmapIndex].asImageBitmap(),
+                                                contentDescription = null,
+                                            )
+
+                                        }
                                     }
                                 }
                             }
+
                         }
                         Spacer(modifier = Modifier.width(16.dp))
                     }
                 }
             }
-
 
         }
 
@@ -179,8 +205,4 @@ fun HomeScreen(
 
 }
 
-
-fun byteArrayToBitmap(byteArray: ByteArray): Bitmap {
-    return BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-}
 
