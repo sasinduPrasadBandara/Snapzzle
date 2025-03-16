@@ -8,16 +8,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.sasinduprasad.snapzzle.ImageView
 import com.sasinduprasad.snapzzle.MainViewModel
 import com.sasinduprasad.snapzzle.MainViewModelFactory
-import com.sasinduprasad.snapzzle.home.byteArrayToBitmap
 
 @Composable
 fun PlayPuzzleScreen(
-    onGameWin: () -> Unit,
+    onGameWin: (puzzleId: Long,duration:Int) -> Unit,
     onGameGiveUp: () -> Unit,
-    navController: NavHostController
+    navController: NavHostController,
 ) {
     val context = LocalContext.current
 
@@ -25,23 +23,37 @@ fun PlayPuzzleScreen(
         factory = MainViewModelFactory(context.applicationContext)
     )
 
-    // Get the current backstack entry and extract arguments
     val currentNavBackStackEntry by navController.currentBackStackEntryAsState()
     val puzzleId = currentNavBackStackEntry?.arguments?.getLong("puzzleId")
 
-    // Load puzzle by ID when available
+
     LaunchedEffect(puzzleId) {
         if (puzzleId != null) {
             viewModel.loadPuzzleById(puzzleId)
         }
     }
 
-    // Observe puzzle state from ViewModel
-    val puzzle by viewModel.puzzle.collectAsState()
-    val bitmaps = puzzle?.bitmaps?.map { byteArrayToBitmap(it) } ?: emptyList()
 
-    // Display images once bitmaps are available
-    if (bitmaps.isNotEmpty()) {
-        ImageView(bitmaps)
+    val puzzle by viewModel.puzzle.collectAsState()
+    val bitmaps = puzzle?.bitmaps
+
+    val positionMap = puzzle?.positionMap
+
+    if (bitmaps != null) {
+        if (bitmaps.isNotEmpty()) {
+            puzzle?.let { puzzleUi ->
+                ImageView(
+                    bitmapDataList = bitmaps, positionMap = positionMap, onWin = {
+                        duration -> puzzle?.pid?.let { onGameWin(it, duration) }
+                        puzzle!!.pid?.let { pid -> viewModel.updatePuzzle(duration, pid) }
+                    },
+                    onBack = {
+                        navController.popBackStack()
+                    },
+                    difficulty = puzzleUi.difficulty
+                )
+            }
+        }
     }
+
 }
