@@ -24,7 +24,3 @@ Snapzzle is an innovative mobile app that allows users to take a photo and trans
 ![App Screenshot](assets/snapzzle_3.jpg)
 ![App Screenshot](assets/snapzzle_4.jpg)
 ![App Screenshot](assets/snapzzle_5.jpg)
-
-## Screen Recording
-
-![App Demo](assets/Snapzzle_gif.gif)
